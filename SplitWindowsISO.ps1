@@ -45,7 +45,7 @@ if (![System.IO.File]::Exists($oscdimg)) {
 
     # Silent install of adksetup.exe and DeploymentTools
     Write-Host "Silent adksetup.exe install to 'C:\Program Files (x86)\Windows Kits\10\'"
-    adksetup.exe /quiet /installpath "C:\Program Files (x86)\Windows Kits\10" /features OptionId.DeploymentTools
+    & "$($PWD)\adksetup.exe" /quiet /installpath "C:\Program Files (x86)\Windows Kits\10" /features OptionId.DeploymentTools
 }
 Write-Host "Location of oscdimg: $($oscdimg)"
 Write-Host " "
