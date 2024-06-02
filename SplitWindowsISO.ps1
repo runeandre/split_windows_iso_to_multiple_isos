@@ -11,6 +11,7 @@ Write-Host " "
 
 Write-Host -NoNewLine 'Press any key to continue...';
 $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
+Write-Host " "
 
 
 ### Settings ###
@@ -20,12 +21,23 @@ $oscdimg_64bit = "C:\Program Files (x86)\Windows Kits\10\Assessment and Deployme
 $folder_name_tmp = "tmp"
 $folder_tmp = "$($PWD)\$($folder_name_tmp)"
 
-$dvd_source_Windows = "Windows.iso"
-$dvd_target_DVD1_UEFI = "Windows_DVD1_UEFI.iso"
-$dvd_target_DVD2_UEFI = "Windows_DVD2_UEFI.iso"
+$folder_win_dvd1 = "$($folder_tmp)\win_dvd1\"
+$folder_win_dvd2 = "$($folder_tmp)\win_dvd2\"
 
+$dvd_source_Windows = "Windows.iso"
+$dvd_target_DVD1_UEFI = "Windows_DVD1.iso"
+$dvd_target_DVD2_UEFI = "Windows_DVD2.iso"
+
+### Delete old files and folders
+Write-Host " "
+Write-Host "Delete old files and folders."
+Remove-Item "$($folder_tmp)" -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue
+Remove-Item "$($PWD)\$($dvd_target_DVD1_UEFI)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+Remove-Item "$($PWD)\$($dvd_target_DVD2_UEFI)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+Remove-Item "$($PWD)\Windows7\" -Force -Confirm:$false -ErrorAction SilentlyContinue
 
 ### Install adksetup.exe to C:\ADK\ if oscdimg is missing ###
+Write-Host " "
 # For x86 32-bit systems
 $oscdimg = $oscdimg_32bit
 
@@ -48,15 +60,9 @@ if (![System.IO.File]::Exists($oscdimg)) {
     & "$($PWD)\adksetup.exe" /quiet /installpath "C:\Program Files (x86)\Windows Kits\10" /features OptionId.DeploymentTools
 }
 Write-Host "Location of oscdimg: $($oscdimg)"
-Write-Host " "
-
-### Delete old files and folders
-Remove-Item "$($folder_tmp)\" -Recurse -Force -Confirm:$false
-Remove-Item $dvd_target_DVD1_UEFI -Force -Confirm:$false
-Remove-Item $dvd_target_DVD2_UEFI -Force -Confirm:$false
-
 
 ### Full path to the ISO file
+Write-Host " "
 $isoPath = "$($PWD)\$($dvd_source_Windows)"
 Write-Host "ISO file: $($isoPath)"
 
@@ -66,20 +72,70 @@ $isoDrive | Dismount-DiskImage | Out-Null
 
 ### Mount ISO
 $isoDrive = Mount-DiskImage -ImagePath $isoPath -PassThru | Get-Volume
-Write-Host "ISO drive: $($isoDrive)"
 
 ### Get the DriveLetter currently assigned to the drive (a single [char])
 $isoLetter = ($isoDrive | Get-Volume).DriveLetter
 $isoDriveLetter = "$($isoLetter):\"
 Write-Host "ISO drive letter: $($isoDriveLetter)"
 
-### Create an empty tmp folder
-mkdir "$($folder_tmp)"
+### Check for sources\install.esd
+$dvd_windows_version = "na"
+if ([System.IO.File]::Exists("$($isoDriveLetter)sources\install.esd")) {
+    $dvd_windows_version = Dism /Get-ImageInfo /ImageFile:"$($isoDriveLetter)sources\install.esd" /index:1 | Select-String "Name : Windows"
+} else {
+    Write-Host " "
+	Write-Host " "
+	Write-Host "#############"
+    Write-Host "### Error ###"
+	Write-Host "#############"
+    Write-Host " "
+    Write-Host "Unable to find install.esd in the ISO file $($isoPath) (Mounted to '$($isoDriveLetter)sources\')."
+    Write-Host " "
+	Write-Host "Is this a Windows 7 ISO?"
+	Write-Host "The command 'Dism /Split-Image' doesn't support Windows 7 WIM files."
+	Write-Host " "
+	Write-Host "Have you provided an ISO with both 32-bit and 64-bit on it?"
+    Write-Host "Use an ISO with only one architecture on it (32 OR 64-bit) as only this is supported by this script."
+    Write-Host " "
+
+	### Unmount ISO
+	$isoDrive = Get-DiskImage -ImagePath "$($isoPath)"
+	$isoDrive | Dismount-DiskImage | Out-Null
+
+    Exit
+}
+Write-Host " "
+Write-Host $dvd_windows_version
+
+$dvd_version_win10 = "10"
+$dvd_version_win10_name = "Windows 10"
+$dvd_version_win11 = "11"
+$dvd_version_win11_name = "Windows 11"
+
+if ("$($dvd_windows_version)" -like "*$($dvd_version_win10_name)*"){
+    $dvd_windows_version = $dvd_version_win10
+} elseif ("$($dvd_windows_version)" -like "*$($dvd_version_win11_name)*"){
+    $dvd_windows_version = $dvd_version_win11
+}
+Write-Host "Windows DVD version: $($dvd_windows_version)"
+
+### Add DVD Windows version to target ISO names
+$dvd_target_DVD1_UEFI = $dvd_target_DVD1_UEFI.replace("Windows","Windows$($dvd_windows_version)")
+$dvd_target_DVD2_UEFI = $dvd_target_DVD2_UEFI.replace("Windows","Windows$($dvd_windows_version)")
+
+### Delete old ISOs with the version in the name
+Remove-Item "$($PWD)\$($dvd_target_DVD1_UEFI)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+Remove-Item "$($PWD)\$($dvd_target_DVD2_UEFI)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+
+### Create tmp and win_dvd1 folders
+Write-Host " "
+Write-Host "Creating the 'tmp\' and 'tmp\win_dvd1' folders"
+mkdir "$($folder_win_dvd1)"
 
 ### Copy CD content to the tmp\win_dvd1 folder
-$folder_win_dvd1 = "$($folder_tmp)\win_dvd1\"
-mkdir "$($folder_win_dvd1)"
-Copy-item -Force -Recurse -Verbose "$($isoDriveLetter)*" -Destination "$($folder_win_dvd1)"
+Write-Host " "
+Write-Host "Copy Windows DVD files from '$($isoDriveLetter)' to '$($folder_win_dvd1)' (This takes a while!)"
+Copy-item -Force -Recurse "$($isoDriveLetter)*" -Destination "$($folder_win_dvd1)" #-Verbose
 
 ### Unmount ISO
 $isoDrive = Get-DiskImage -ImagePath "$($isoPath)"
@@ -95,34 +151,38 @@ mv "$($folder_win_dvd1)sources\install.esd" "$($folder_tmp)\install.esd"
 ### Find DVD free space, so we know the maximum size of install.swm in order for it fit on a singel layer DVD.
 $dvd1_used_space = (Get-ChildItem -Path $folder_win_dvd1 -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
 $dvd_install_swm_size = 4400 - [Math]::Floor($dvd1_used_space) #Floor rounds the number down to a whole number 
-
 Write-Host " "
 Write-Host "DVD used space: $($dvd1_used_space)MB"
 Write-Host "Max install.swm size: $($dvd_install_swm_size)MB"
+
 Write-Host " "
 
 ### Convert install.esd into install.swm files in the DVD1 sources folder
-Write-Host "The DISM ESD to SWM takes a while!"
+Write-Host " "
+Write-Host "Creating 'install.swm' files, this takes a while!"
 Dism /Split-Image /ImageFile:"$($folder_tmp)\install.esd" /SWMFile:"$($folder_win_dvd1)sources\install.swm" /FileSize:"$($dvd_install_swm_size)"
 
 ### Delete the file tmp\install.esd
-Remove-Item "$($folder_tmp)\install.esd" -Force -Confirm:$false
+Remove-Item "$($folder_tmp)\install.esd" -Force -Confirm:$false -ErrorAction SilentlyContinue
 
-### Create DVD2 and move the second swm file
-$folder_win_dvd2 = "$($folder_tmp)\win_dvd2\"
+### Create DVD2 sources and move the second swm file
+Write-Host " "
+Write-Host "Creating the 'tmp\win_dvd2' and 'tmp\win_dvd2\sources' folders"
 mkdir "$($folder_win_dvd2)sources"
+Write-Host "Move install2.swm from 'win_dvd1\sources' to 'win_dvd2\sources'"
 mv "$($folder_win_dvd1)sources\install2.swm" "$($folder_win_dvd2)sources\install2.swm"
 
 ### Create UEFI ISOs ###
-& $oscdimg -m -o -u2 -udfver102 -bootdata:2#p0,e,b"$($folder_win_dvd1)boot\etfsboot.com"#pEF,e,b"$($folder_win_dvd1)efi\microsoft\boot\efisys.bin" "$($folder_win_dvd1)" "$($PWD)\$dvd_target_DVD1_UEFI"
-& $oscdimg -m -o -u2 -udfver102 "$($folder_win_dvd2)" "$($PWD)\$dvd_target_DVD2_UEFI"
+& $oscdimg -m -o -u2 -udfver102 -bootdata:2#p0,e,b"$($folder_win_dvd1)boot\etfsboot.com"#pEF,e,b"$($folder_win_dvd1)efi\microsoft\boot\efisys.bin" "$($folder_win_dvd1)" "$($PWD)\$($dvd_target_DVD1_UEFI)"
+& $oscdimg -m -o -u2 -udfver102 "$($folder_win_dvd2)" "$($PWD)\$($dvd_target_DVD2_UEFI)"
 
 ### Finished
 Write-Host " "
 Write-Host "Finished creating the Windows ISOs!"
-Write-Host "Windows DVD1 UEFI: $($PWD)\$dvd_target_DVD1_UEFI"
-Write-Host "Windows DVD2 UEFI: $($PWD)\$dvd_target_DVD2_UEFI"
+Write-Host "Windows DVD1: $($PWD)\$($dvd_target_DVD1_UEFI)"
+Write-Host "Windows DVD2: $($PWD)\$($dvd_target_DVD2_UEFI)"
 
+if ($dvd_windows_version -eq $dvd_version_win11) {
 ### Tips / How tos
 Write-Host "
 
@@ -135,3 +195,14 @@ Write-Host "
 6. When you reach the 'Let's connect you to a network', select 'I don't have internet' and 'Continue with limited setup'.
 7. Follow the screens and finish the installation.
 "
+} elseif ($dvd_windows_version -eq $dvd_version_win10) {
+### Tips / How tos
+Write-Host "
+
+### Windows 10 doesn't work in my tests! ###
+$($dvd_target_DVD1_UEFI) boots, but when asking for the second DVD and given $($dvd_target_DVD2_UEFI), it fails.
+It seems to not find some files, unclear what is missing.
+
+So it's a work in progress feature, hehe
+"
+}
