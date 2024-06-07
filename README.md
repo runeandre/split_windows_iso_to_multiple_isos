@@ -9,9 +9,9 @@ Windows 11 ISOs works.
 1. [Download the files from this GIT repo](https://github.com/runeandre/split_windows_iso_to_multiple_isos/archive/refs/heads/main.zip) and unzip them into a folder.
 2. Copy the Windows ISO into the same folder as the files above.
 3. Rename the ISO file to "Windows.iso".
-4. Execute the "RUN" file (double click it).
-<br>"RUN.bat" = Creates ISO where Hardware checks and Online Account requirement is disabled.
-<br>"RUN_Original" = Creates an "original" DVD.
+4. Execute the "CREATE_ISO" file (double click it).
+<br>"CREATE_ISO.bat" = Creates ISO where Hardware checks and Online Account requirement is disabled.
+<br>"CREATE_ISO_ORIGINAL" = Creates an "original" DVD (no Hardware checks etc removed).
 5. It will ask for Administartor privelidges if missing.
 6. "adksetup.exe" will be installed if "oscdimg" is not installed.
 7. When finished, the script will have produced 2 new ISO files named: "WindowsXX_DVD1.iso" and "WindowsXX_DVD2.iso" (XX = Windows Version number).
