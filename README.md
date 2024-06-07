@@ -24,6 +24,15 @@ Windows 10 only works when the ISO is not split, so when running "CREATE_ISO_NOS
 7. When finished, the script will have produced 2 new ISO files named: "WindowsXX_DVD1.iso" and "WindowsXX_DVD2.iso" (XX = Windows Version number).
 8. Burn these to DVDs and boot from the first DVD. It will ask for the second DVD during the setup.
 
+## Modifications made to ISOs
+When running "CREATE_ISO.bat" and "CREATE_ISO_NOSPLIT.bat", the following changed are added via the "autounattend.xml" file.
+
+- Hides "Online Accounts", only "Local Accounts" can be created during setup.
+- Skip TPM, RAM, SecureBoot, CPU and Storage checks.
+- Passwords never expire per default
+
+"autounattend.xml" source: https://gist.github.com/asheroto/c4a9fb4e5e5bdad10bcb831e3a3daee6
+
 ## Test status
 Currently just tested in Windows 11 with Windows 11 ISOs.
 <br>VirtualBox was used for test booting the ISOs on a Windows 11 VM.

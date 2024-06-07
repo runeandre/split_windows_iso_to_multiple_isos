@@ -34,16 +34,6 @@
                     <Path>net accounts /maxpwage:unlimited</Path>
                     <WillReboot>Never</WillReboot>
                 </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>2</Order>
-                    <Path>net user User /active:Yes</Path>
-                    <WillReboot>Never</WillReboot>
-                </RunSynchronousCommand>
-                <RunSynchronousCommand wcm:action="add">
-                    <Order>3</Order>
-                    <Path>net user User /passwordreq:yes</Path>
-                    <WillReboot>Never</WillReboot>
-                </RunSynchronousCommand>
             </RunSynchronous>
         </component>
         <component name="Microsoft-Windows-Security-SPP-UX" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
