@@ -28,6 +28,11 @@ $dvd_source_Windows = "Windows.iso"
 $dvd_target_DVD1_UEFI = "Windows_DVD1.iso"
 $dvd_target_DVD2_UEFI = "Windows_DVD2.iso"
 
+$installFile = "install."
+
+$autounattend = "$($env:autounattend)"
+
+
 ### Delete old files and folders
 Write-Host " "
 Write-Host "Delete old files and folders."
@@ -78,10 +83,14 @@ $isoLetter = ($isoDrive | Get-Volume).DriveLetter
 $isoDriveLetter = "$($isoLetter):\"
 Write-Host "ISO drive letter: $($isoDriveLetter)"
 
-### Check for sources\install.esd
+### Check for sources\install.esd or wim
 $dvd_windows_version = "na"
 if ([System.IO.File]::Exists("$($isoDriveLetter)sources\install.esd")) {
+	$installFile = "install.esd"
     $dvd_windows_version = Dism /Get-ImageInfo /ImageFile:"$($isoDriveLetter)sources\install.esd" /index:1 | Select-String "Name : Windows"
+} elseif ([System.IO.File]::Exists("$($isoDriveLetter)sources\install.wim")) {
+	$installFile = "install.wim"
+    $dvd_windows_version = Dism /Get-ImageInfo /ImageFile:"$($isoDriveLetter)sources\install.wim" /index:1 | Select-String "Name : Windows"
 } else {
     Write-Host " "
 	Write-Host " "
@@ -89,11 +98,8 @@ if ([System.IO.File]::Exists("$($isoDriveLetter)sources\install.esd")) {
     Write-Host "### Error ###"
 	Write-Host "#############"
     Write-Host " "
-    Write-Host "Unable to find install.esd in the ISO file $($isoPath) (Mounted to '$($isoDriveLetter)sources\')."
+    Write-Host "Unable to find install.esd or install.wim in the ISO file $($isoPath) (Mounted to '$($isoDriveLetter)sources\')."
     Write-Host " "
-	Write-Host "Is this a Windows 7 ISO?"
-	Write-Host "The command 'Dism /Split-Image' doesn't support Windows 7 WIM files."
-	Write-Host " "
 	Write-Host "Have you provided an ISO with both 32-bit and 64-bit on it?"
     Write-Host "Use an ISO with only one architecture on it (32 OR 64-bit) as only this is supported by this script."
     Write-Host " "
@@ -116,6 +122,16 @@ if ("$($dvd_windows_version)" -like "*$($dvd_version_win10_name)*"){
     $dvd_windows_version = $dvd_version_win10
 } elseif ("$($dvd_windows_version)" -like "*$($dvd_version_win11_name)*"){
     $dvd_windows_version = $dvd_version_win11
+} else {
+	Write-Host " "
+	Write-Host "Unsupported Windows version!"
+	Write-Host " "
+	
+	### Unmount ISO
+	$isoDrive = Get-DiskImage -ImagePath "$($isoPath)"
+	$isoDrive | Dismount-DiskImage | Out-Null
+	
+	exit
 }
 Write-Host "Windows DVD version: $($dvd_windows_version)"
 
@@ -145,8 +161,15 @@ $isoDrive | Dismount-DiskImage | Out-Null
 attrib -r -h "$($folder_tmp)\*.*" /s /d
 
 ### Change Windows source files
-# Move install.esd so we don't count it when checking used space
-mv "$($folder_win_dvd1)sources\install.esd" "$($folder_tmp)\install.esd"
+# Move install.esd or wim so we don't count it when checking used space
+mv "$($folder_win_dvd1)sources\$($installFile)" "$($folder_tmp)\$($installFile)"
+
+if ("true" -eq "$($autounattend)") {
+	# Source: https://gist.github.com/asheroto/c4a9fb4e5e5bdad10bcb831e3a3daee6
+	Write-Host " "
+	Write-Host "Add autounattend.xml file to the ISO, it disables hardware checks and allows local accounts"
+	Copy-item "$($PWD)\autounattend.xml" -Destination "$($folder_win_dvd1)"
+}
 
 ### Find DVD free space, so we know the maximum size of install.swm in order for it fit on a singel layer DVD.
 $dvd1_used_space = (Get-ChildItem -Path $folder_win_dvd1 -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
@@ -157,13 +180,13 @@ Write-Host "Max install.swm size: $($dvd_install_swm_size)MB"
 
 Write-Host " "
 
-### Convert install.esd into install.swm files in the DVD1 sources folder
+### Convert install.esd or wim into install.swm files in the DVD1 sources folder
 Write-Host " "
 Write-Host "Creating 'install.swm' files, this takes a while!"
-Dism /Split-Image /ImageFile:"$($folder_tmp)\install.esd" /SWMFile:"$($folder_win_dvd1)sources\install.swm" /FileSize:"$($dvd_install_swm_size)"
+Dism /Split-Image /ImageFile:"$($folder_tmp)\$($installFile)" /SWMFile:"$($folder_win_dvd1)sources\install.swm" /FileSize:"$($dvd_install_swm_size)"
 
-### Delete the file tmp\install.esd
-Remove-Item "$($folder_tmp)\install.esd" -Force -Confirm:$false -ErrorAction SilentlyContinue
+### Delete the file tmp\install.esd or wim
+Remove-Item "$($folder_tmp)\$($installFile)" -Force -Confirm:$false -ErrorAction SilentlyContinue
 
 ### Create DVD2 sources and move the second swm file
 Write-Host " "
@@ -187,6 +210,8 @@ if ($dvd_windows_version -eq $dvd_version_win11) {
 Write-Host "
 
 ### HOW TO: Setting up a Local account on Windows 11 ###
+Only useful with the 'original' DVD where online accounts haven't been disabled.
+
 1. Start Windows setup without internet connected (Disconnect ethernet cable or don't login to Wifi)
 2. Follow the Windows 11 installation until 'choose the country' screen.
 3. Press: Shift + F10
