@@ -9,6 +9,8 @@ cd /d %currentDir%
 
 rem Add autounattend.xml to the ISO
 set autounattend=true
+rem Split the ISO file
+set splitISO=true
 
 rem Start the SplitWindowsISO script in PowerShell
 powershell -f SplitWindowsISO.ps1

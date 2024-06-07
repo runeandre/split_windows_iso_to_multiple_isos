@@ -7,10 +7,10 @@ rem Set the current directory to be the one we run the scripts from
 SET currentDir=%~dp0
 cd /d %currentDir%
 
-rem Dont add autounattend.xml to the ISO
-set autounattend=false
-rem Split the ISO file
-set splitISO=true
+rem Add autounattend.xml to the ISO
+set autounattend=true
+rem Dont split the ISO file
+set splitISO=false
 
 rem Start the SplitWindowsISO script in PowerShell
 powershell -f SplitWindowsISO.ps1

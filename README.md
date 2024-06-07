@@ -3,6 +3,9 @@
 ## About
 A script made to split a modern Windows ISO into two ISOs that are small enough to be burnt to a singel layer DVD (the normal ones people use).
 
+You can also remove hardware checks and just setup a local account during setup.
+<br>There is also an option to create these modifications as a single ISO.
+
 Windows 11 ISOs works.
 
 ## How to use
@@ -10,8 +13,9 @@ Windows 11 ISOs works.
 2. Copy the Windows ISO into the same folder as the files above.
 3. Rename the ISO file to "Windows.iso".
 4. Execute the "CREATE_ISO" file (double click it).
-<br>"CREATE_ISO.bat" = Creates ISO where Hardware checks and Online Account requirement is disabled.
-<br>"CREATE_ISO_ORIGINAL" = Creates an "original" DVD (no Hardware checks etc removed).
+<br>"CREATE_ISO.bat" = Creates ISOs with local accounts and no hardware checks.
+<br>"CREATE_ISO_NOSPLIT.bat" = The same as "CREATE_ISO", just without splitting the ISO.
+<br>"CREATE_ISO_ORIGINAL.bat" = Creates "original" ISOs (no alterations except splitting the ISO).
 5. It will ask for Administartor privelidges if missing.
 6. "adksetup.exe" will be installed if "oscdimg" is not installed.
 7. When finished, the script will have produced 2 new ISO files named: "WindowsXX_DVD1.iso" and "WindowsXX_DVD2.iso" (XX = Windows Version number).

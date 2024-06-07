@@ -8,7 +8,6 @@ Write-Host " "
 Write-Host "Current directory: $($PWD)"
 Write-Host " "
 
-
 Write-Host -NoNewLine 'Press any key to continue...';
 $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
 Write-Host " "
@@ -17,20 +16,16 @@ Write-Host " "
 ### Settings ###
 $oscdimg_32bit = "C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\x86\Oscdimg\oscdimg.exe"
 $oscdimg_64bit = "C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-
 $folder_name_tmp = "tmp"
 $folder_tmp = "$($PWD)\$($folder_name_tmp)"
-
 $folder_win_dvd1 = "$($folder_tmp)\win_dvd1\"
 $folder_win_dvd2 = "$($folder_tmp)\win_dvd2\"
-
 $dvd_source_Windows = "Windows.iso"
 $dvd_target_DVD1_UEFI = "Windows_DVD1.iso"
 $dvd_target_DVD2_UEFI = "Windows_DVD2.iso"
-
 $installFile = "install."
-
 $autounattend = "$($env:autounattend)"
+$splitISO = "$($env:splitISO)"
 
 
 ### Delete old files and folders
@@ -161,49 +156,58 @@ $isoDrive | Dismount-DiskImage | Out-Null
 attrib -r -h "$($folder_tmp)\*.*" /s /d
 
 ### Change Windows source files
-# Move install.esd or wim so we don't count it when checking used space
-mv "$($folder_win_dvd1)sources\$($installFile)" "$($folder_tmp)\$($installFile)"
+if ("$($splitISO)" -eq "true") {
+	# Move install.esd or wim so we don't count it when checking used space
+	mv "$($folder_win_dvd1)sources\$($installFile)" "$($folder_tmp)\$($installFile)"
+}
 
-if ("true" -eq "$($autounattend)") {
+if ("$($autounattend)" -eq "true") {
 	# Source: https://gist.github.com/asheroto/c4a9fb4e5e5bdad10bcb831e3a3daee6
 	Write-Host " "
 	Write-Host "Add autounattend.xml file to the ISO, it disables hardware checks and allows local accounts"
 	Copy-item "$($PWD)\autounattend.xml" -Destination "$($folder_win_dvd1)"
 }
 
-### Find DVD free space, so we know the maximum size of install.swm in order for it fit on a singel layer DVD.
-$dvd1_used_space = (Get-ChildItem -Path $folder_win_dvd1 -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
-$dvd_install_swm_size = 4400 - [Math]::Floor($dvd1_used_space) #Floor rounds the number down to a whole number 
-Write-Host " "
-Write-Host "DVD used space: $($dvd1_used_space)MB"
-Write-Host "Max install.swm size: $($dvd_install_swm_size)MB"
 
-Write-Host " "
+if ("$($splitISO)" -eq "true") {
+	### Find DVD free space, so we know the maximum size of install.swm in order for it fit on a singel layer DVD.
+	$dvd1_used_space = (Get-ChildItem -Path $folder_win_dvd1 -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+	$dvd_install_swm_size = 4400 - [Math]::Floor($dvd1_used_space) #Floor rounds the number down to a whole number 
+	Write-Host " "
+	Write-Host "DVD used space: $($dvd1_used_space)MB"
+	Write-Host "Max install.swm size: $($dvd_install_swm_size)MB"
 
-### Convert install.esd or wim into install.swm files in the DVD1 sources folder
-Write-Host " "
-Write-Host "Creating 'install.swm' files, this takes a while!"
-Dism /Split-Image /ImageFile:"$($folder_tmp)\$($installFile)" /SWMFile:"$($folder_win_dvd1)sources\install.swm" /FileSize:"$($dvd_install_swm_size)"
+	Write-Host " "
 
-### Delete the file tmp\install.esd or wim
-Remove-Item "$($folder_tmp)\$($installFile)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+	### Convert install.esd or wim into install.swm files in the DVD1 sources folder
+	Write-Host " "
+	Write-Host "Creating 'install.swm' files, this takes a while!"
+	Dism /Split-Image /ImageFile:"$($folder_tmp)\$($installFile)" /SWMFile:"$($folder_win_dvd1)sources\install.swm" /FileSize:"$($dvd_install_swm_size)"
 
-### Create DVD2 sources and move the second swm file
-Write-Host " "
-Write-Host "Creating the 'tmp\win_dvd2' and 'tmp\win_dvd2\sources' folders"
-mkdir "$($folder_win_dvd2)sources"
-Write-Host "Move install2.swm from 'win_dvd1\sources' to 'win_dvd2\sources'"
-mv "$($folder_win_dvd1)sources\install2.swm" "$($folder_win_dvd2)sources\install2.swm"
+	### Delete the file tmp\install.esd or wim
+	Remove-Item "$($folder_tmp)\$($installFile)" -Force -Confirm:$false -ErrorAction SilentlyContinue
+
+	### Create DVD2 sources and move the second swm file
+	Write-Host " "
+	Write-Host "Creating the 'tmp\win_dvd2' and 'tmp\win_dvd2\sources' folders"
+	mkdir "$($folder_win_dvd2)sources"
+	Write-Host "Move install2.swm from 'win_dvd1\sources' to 'win_dvd2\sources'"
+	mv "$($folder_win_dvd1)sources\install2.swm" "$($folder_win_dvd2)sources\install2.swm"
+}
 
 ### Create UEFI ISOs ###
 & $oscdimg -m -o -u2 -udfver102 -bootdata:2#p0,e,b"$($folder_win_dvd1)boot\etfsboot.com"#pEF,e,b"$($folder_win_dvd1)efi\microsoft\boot\efisys.bin" "$($folder_win_dvd1)" "$($PWD)\$($dvd_target_DVD1_UEFI)"
-& $oscdimg -m -o -u2 -udfver102 "$($folder_win_dvd2)" "$($PWD)\$($dvd_target_DVD2_UEFI)"
+if ("$($splitISO)" -eq "true") {
+	& $oscdimg -m -o -u2 -udfver102 "$($folder_win_dvd2)" "$($PWD)\$($dvd_target_DVD2_UEFI)"
+}
 
 ### Finished
 Write-Host " "
 Write-Host "Finished creating the Windows ISOs!"
 Write-Host "Windows DVD1: $($PWD)\$($dvd_target_DVD1_UEFI)"
-Write-Host "Windows DVD2: $($PWD)\$($dvd_target_DVD2_UEFI)"
+if ("$($splitISO)" -eq "true") {
+	Write-Host "Windows DVD2: $($PWD)\$($dvd_target_DVD2_UEFI)"
+}
 
 if ($dvd_windows_version -eq $dvd_version_win11) {
 ### Tips / How tos
