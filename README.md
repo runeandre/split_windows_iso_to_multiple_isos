@@ -8,6 +8,9 @@ You can also remove hardware checks and just setup a local account during setup.
 
 Windows 11 ISOs works.
 
+Windows 10 only works when the ISO is not split, so when running "CREATE_ISO_NOSPLIT.bat".
+<br>"CREATE_ISO_NOSPLIT.bat" will create an unsplit Windows 10 ISO where during setup you create a local account and it skips hardware checks.
+
 ## How to use
 1. [Download the files from this GIT repo](https://github.com/runeandre/split_windows_iso_to_multiple_isos/archive/refs/heads/main.zip) and unzip them into a folder.
 2. Copy the Windows ISO into the same folder as the files above.
