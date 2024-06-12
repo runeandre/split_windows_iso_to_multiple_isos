@@ -34,7 +34,6 @@ Write-Host "Delete old files and folders."
 Remove-Item "$($folder_tmp)" -Recurse -Force -Confirm:$false -ErrorAction SilentlyContinue
 Remove-Item "$($PWD)\$($dvd_target_DVD1_UEFI)" -Force -Confirm:$false -ErrorAction SilentlyContinue
 Remove-Item "$($PWD)\$($dvd_target_DVD2_UEFI)" -Force -Confirm:$false -ErrorAction SilentlyContinue
-Remove-Item "$($PWD)\Windows7\" -Force -Confirm:$false -ErrorAction SilentlyContinue
 
 ### Install adksetup.exe to C:\ADK\ if oscdimg is missing ###
 Write-Host " "
