@@ -50,13 +50,13 @@ if (![System.IO.File]::Exists($oscdimg)) {
 
     # Download adksetup.exe
     if (![System.IO.File]::Exists("$($PWD)\adksetup.exe")) {
-        Write-Host "Download missing adksetup.exe setup file"
+        Write-Host "Download missing adksetup.exe setup file from https://go.microsoft.com/fwlink/?linkid=2271337"
         Invoke-WebRequest https://go.microsoft.com/fwlink/?linkid=2271337 -OutFile adksetup.exe
     }
 
     # Silent install of adksetup.exe and DeploymentTools
-    Write-Host "Silent adksetup.exe install to 'C:\Program Files (x86)\Windows Kits\10\'"
-    & "$($PWD)\adksetup.exe" /quiet /installpath "C:\Program Files (x86)\Windows Kits\10" /features OptionId.DeploymentTools
+    Write-Host "Installing adksetup.exe silently to 'C:\Program Files (x86)\Windows Kits\10\'"
+    Start-Process "$($PWD)\adksetup.exe" -ArgumentList @("/quiet", "/installpath ""C:\Program Files (x86)\Windows Kits\10""", "/features OptionId.DeploymentTools") -NoNewWindow -Wait
 }
 Write-Host "Location of oscdimg: $($oscdimg)"
 
